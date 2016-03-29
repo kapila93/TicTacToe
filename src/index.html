@@ -1,0 +1,213 @@
+ <script type="text/javascript" src="js/phaser.min.js"></script>
+<script>
+ var game = new Phaser.Game(650, 450, Phaser.AUTO, '', {preload: preload, create: create, update: update});
+
+      function preload() {
+          game.load.tilemap('map', 'assets/tile_properties.json', null, Phaser.Tilemap.TILED_JSON);
+          game.load.image('tiles', 'assets/tiles.jpg');
+          game.load.image('play_again', 'assets/playagain.png');
+      }
+      
+      function create() {
+          game.stage.backgroundColor = 0x2b2b2b;
+          game.physics.startSystem(Phaser.Physics.ARCADE);
+
+          turn = x_wins = o_wins = draws = 0;
+          end_state = false;
+          last_turn_time = null;
+          map = game.add.tilemap('map');
+
+          map.addTilesetImage('tiles');
+
+          layer = map.createLayer('Tile Layer 1');
+          //layer.resizeWorld();
+
+          // Our painting marker
+          createMarker();
+
+          game.input.onDown.add(getTileProperties, this);
+
+          cursors = game.input.keyboard.createCursorKeys();
+
+          turn_text_label = game.add.text(495, 55, "Turn:",  { font: "Bold 32px Arial", fill: '#ffffff' });
+
+      }
+
+      // creates an orange box to show which tile is being selected by the cursor
+      function createMarker()
+      {
+          marker = game.add.graphics();
+          marker.lineStyle(2, 0xFF6600, 1);
+          marker.drawRect(0, 0, 150, 150);
+          game.input.addMoveCallback(updateMarker, this);
+      }
+
+      function getTileProperties() {
+
+          if (game.input.activePointer.worldX < 450)
+          {
+              x = layer.getTileX(game.input.activePointer.worldX);
+              y = layer.getTileY(game.input.activePointer.worldY);
+
+              tile = map.getTile(x, y, layer);
+
+              tile.properties.wibble = true;
+          }
+      }
+
+      // updates the marker when cursor is moved
+      function updateMarker() {
+          if (game.input.activePointer.worldX < 450) // makes sure the pointer is on the tilesheet
+          {
+              marker.x = layer.getTileX(game.input.activePointer.worldX) * 150;
+              marker.y = layer.getTileY(game.input.activePointer.worldY) * 150;
+          }
+      }
+
+      function update() {
+          if (game.input.activePointer.worldX < 451 && end_state == false)
+          {       
+              if (game.input.activePointer.isDown && game.time.now - last_turn_time > 200 && tile.index == 3)
+              {
+                  if (turn % 2 == 0){
+                      dropPiece(2);    
+                  }
+                  else {
+                   dropPiece(1);       
+                  }
+              }
+          }
+      }
+      
+      function endGame()
+      {
+        restart_button = game.add.button(450, 300, 'play_again', restart, this, 2, 1, 0);
+      }
+
+      function restart()
+      {
+          turn = 0;
+          var tile_index;
+          for (var i = 0; i < 3; i++) {
+                  for (var j = 0; j < 3; j++) {
+
+                  tile_index = map.getTile(i, j, layer, true).index;
+                  map.replace(tile_index, 3, i, j, 1, 1)
+      /*            console.log(map.getTile(i, j, layer, true).index);*/
+                  }
+              }
+          restart_button.destroy(); 
+          end_state = false;
+      }
+
+      // places piece on board
+      function dropPiece(type) 
+      {
+          map.replace(3, type, x, y, 1, 1)
+          last_turn_time = game.time.now;
+          turn += 1;
+          if (turn > 4)
+          {
+              checkWinner(type);
+          }
+
+          if (turn % 2 == 0)
+              {
+                  turn_text_label.setText("Turn:  X");
+              }
+          else 
+              {
+                  turn_text_label.setText("Turn:  O");
+              }
+      }
+
+      function areEqual()
+      {
+         var len = arguments.length;
+         for (var i = 1; i< len; i++){
+            if (arguments[i] == null || arguments[i] != arguments[i-1])
+               return false;
+         }
+         return true;
+      }
+
+      // checks for a winner of either type x or o
+      function checkWinner(type)
+      {
+          var data = [];
+          for (var i = 0; i < 3; i++) {
+                  for (var j = 0; j < 3; j++) {
+                  data.push(map.getTile(i, j, layer, true).index);
+                  }
+              }
+
+          win_type = type + 3; 
+
+          if (areEqual(type, data[0], data[4], data[8]))  
+          {
+              map.replace(type, win_type, 0, 0, 1, 1);
+              map.replace(type, win_type, 1, 1, 1, 1);
+              map.replace(type, win_type, 2, 2, 1, 1);
+              end_state = true;
+          }  
+          else if(areEqual(type, data[0], data[3], data[6]))
+          {
+              map.replace(type, win_type, 0, 0, 1, 1);
+              map.replace(type, win_type, 1, 0, 1, 1);
+              map.replace(type, win_type, 2, 0, 1, 1);
+              end_state = true;
+          }
+          else if(areEqual(type, data[1], data[4], data[7]))
+          {
+              map.replace(type, win_type, 0, 1, 1, 1);
+              map.replace(type, win_type, 1, 1, 1, 1);
+              map.replace(type, win_type, 2, 1, 1, 1);
+              end_state = true;
+          }
+          else if(areEqual(type, data[2], data[5], data[8]))
+          {
+              map.replace(type, win_type, 0, 2, 1, 1);
+              map.replace(type, win_type, 1, 2, 1, 1);
+              map.replace(type, win_type, 2, 2, 1, 1);
+              end_state = true;
+          }
+          else if(areEqual(type, data[2], data[4], data[6]))
+          {
+              map.replace(type, win_type, 0, 2, 1, 1);
+              map.replace(type, win_type, 1, 1, 1, 1);
+              map.replace(type, win_type, 2, 0, 1, 1);
+              end_state = true;
+          }
+          else if(areEqual(type, data[0], data[1], data[2]))
+          {
+              map.replace(type, win_type, 0, 0, 1, 1);
+              map.replace(type, win_type, 0, 1, 1, 1);
+              map.replace(type, win_type, 0, 2, 1, 1);
+              end_state = true;
+          }
+          else if(areEqual(type, data[3], data[4], data[5]))
+          {
+              map.replace(type, win_type, 1, 0, 1, 1);
+              map.replace(type, win_type, 1, 1, 1, 1);
+              map.replace(type, win_type, 1, 2, 1, 1);
+              end_state = true;
+          }
+          else if(areEqual(type, data[6], data[7], data[8]))
+          {
+              map.replace(type, win_type, 2, 0, 1, 1);
+              map.replace(type, win_type, 2, 1, 1, 1);
+              map.replace(type, win_type, 2, 2, 1, 1);
+              end_state = true;
+          }
+          else if(turn == 9) // max 9 turns possible. if no winner, the game is a draw on 9th turn
+          {
+              draw++;
+              end_state = true;
+          }
+
+          if(end_state == true)
+          {
+            endGame();
+          }
+      }
+      </script>
